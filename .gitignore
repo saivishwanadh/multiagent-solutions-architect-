@@ -21,6 +21,6 @@ memory.db
 .chroma_db/
 
 workspace/
-output-*/
+outputs-*/
 *.md
 !README.md
