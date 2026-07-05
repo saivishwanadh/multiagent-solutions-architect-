@@ -141,5 +141,5 @@ if __name__ == "__main__":
     summary = result["architecture_summary"]
     print(f"\nArchitecture Pattern: {summary.architecture_pattern.name}")
     print(f"Hosting: {summary.infrastructure_plan.hosting}")
-    print(f"Frontend: {summary.tech_stack.frontend}")
-    print(f"Database: {summary.tech_stack.database}")
+    print(f"Frontend: {summary.tech_stack.frontend.name if summary.tech_stack.frontend else 'N/A'}")
+    print(f"Database: {summary.tech_stack.database.name}")

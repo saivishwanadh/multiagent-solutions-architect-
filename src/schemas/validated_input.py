@@ -151,3 +151,7 @@ class ValidatedInput(BaseModel):
             "$5,000 budget — these constraints conflict.'"
         ),
     )
+    requires_document_generation: bool = Field(
+        default=False,
+        description="True if the user explicitly asked to save, generate, or download a document/file (e.g., .md file) in their prompt."
+    )

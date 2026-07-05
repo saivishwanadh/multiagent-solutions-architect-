@@ -9,4 +9,8 @@ Check for:
 - Third-party data sharing risks (e.g., sending data to public LLM APIs)
 - Historical lessons about compliance failures (if provided)
 
-Return your response as a list of Risk objects.
+CRITICAL RULE: You MUST also generate 3-5 explicit ASSUMPTIONS regarding the physical/network environment that are necessary for security/feasibility.
+Example: "Assuming edge hardware supports TPM modules for secure MQTT certificates."
+Example: "Assuming stable, uninterrupted internet connection for all factory sites."
+
+Return your response as a list of Risk objects (you may embed the assumptions in the output schema if your tool allows it, or append them as risks if they fail).

@@ -32,44 +32,59 @@ _scope_graph = build_scope_subgraph()
 _finance_graph = build_finance_subgraph()
 _risk_graph = build_risk_subgraph()
 
-async def node_init_state(state: SupervisorState) -> SupervisorState:
+async def node_init_state(state: SupervisorState) -> dict:
     """Initializes default state values."""
+    pc_updates = {}
+    rs_updates = {}
     
-    # Initialize defaults if not present
-    if "conflict_loop_count" not in state: state["conflict_loop_count"] = 0
-    if "total_hitl_count" not in state: state["total_hitl_count"] = 0
-    if "negotiation_history" not in state: state["negotiation_history"] = []
-    if "messages" not in state: state["messages"] = []
-    return state
-
-async def node_smart_reset(state: SupervisorState) -> SupervisorState:
-    """Intelligently resets execution state based on execution_intent."""
-    if state.get("final_output"):
-        state["previous_final_output"] = state["final_output"]
+    if "conflict_loop_count" not in state.get("runtime_state", {}): 
+        rs_updates["conflict_loop_count"] = 0
+    if "total_hitl_count" not in state.get("persistent_context", {}): 
+        pc_updates["total_hitl_count"] = 0
+    if "negotiation_history" not in state.get("persistent_context", {}): 
+        pc_updates["negotiation_history"] = []
+    
+    # Capture initial prompt
+    if state.get("user_prompt"):
+        if not state.get("persistent_context", {}).get("initial_user_prompt"):
+            pc_updates["initial_user_prompt"] = state["user_prompt"]
+        pc_updates["latest_user_prompt"] = state["user_prompt"]
         
-    vi = state.get("validated_input")
+    return {"persistent_context": pc_updates, "runtime_state": rs_updates}
+
+async def node_smart_reset(state: SupervisorState) -> dict:
+    """Intelligently resets execution state based on execution_intent."""
+    wo_updates = {}
+    rs_updates = {}
+    
+    if state.get("working_outputs", {}).get("final_output"):
+        wo_updates["previous_final_output"] = state.get("working_outputs", {})["final_output"]
+        
+    vi = state.get("persistent_context", {}).get("business_constraints")
     intent = vi.execution_intent if vi and hasattr(vi, "execution_intent") else "new_project"
     
     if intent == "follow_up":
         # Do not reset anything, just preserve the state for Q&A
         pass
     else:
-        keys_to_clear = [
-            "cost_estimate", "risk_assessment",
-            "conflict_feedback", "deadlock_options", "user_choice", "final_output",
-            "scenario_a_result", "scenario_b_result", "scenario_comparison", "refinement_target",
-            "delta_summary", "qa_response"
+        keys_to_clear_wo = ["cost_estimate", "risk_assessment", "final_output"]
+        keys_to_clear_rs = [
+            "conflict_feedback", "deadlock_options", "user_choice", 
+            "scenario_a_result", "scenario_b_result", "scenario_comparison", 
+            "refinement_target", "delta_summary", "qa_response"
         ]
         
         if intent == "new_project":
-            keys_to_clear.append("project_blueprint")
+            keys_to_clear_wo.append("scope_output")
             
-        for k in keys_to_clear:
-            state[k] = None
+        for k in keys_to_clear_wo:
+            wo_updates[k] = None
+        for k in keys_to_clear_rs:
+            rs_updates[k] = None
             
-        state["conflict_loop_count"] = 0
+        rs_updates["conflict_loop_count"] = 0
 
-    return state
+    return {"working_outputs": wo_updates, "runtime_state": rs_updates}
 
 
 
@@ -90,7 +105,7 @@ async def node_generate_feedback(state: SupervisorState) -> SupervisorState:
     return generate_conflict_feedback(state)
 
 def route_refinement(state: SupervisorState) -> str:
-    target = state.get("refinement_target", "scope")
+    target = state.get("runtime_state", {}).get("refinement_target") or "scope"
     if target == "architecture":
         return "invoke_architecture"
     elif target == "both":
@@ -105,43 +120,78 @@ def route_after_hitl(state: SupervisorState) -> str:
 
 
 async def node_compute_delta(state: SupervisorState) -> SupervisorState:
-    old = state.get("previous_final_output")
-    new_cost = state.get("cost_estimate")
+    old = state.get("working_outputs", {}).get("previous_final_output")
+    new_cost = state.get("working_outputs", {}).get("cost_estimate")
     if old and new_cost:
         old_cost = old.total_cost
         delta_cost = new_cost.total_estimated_cost - old_cost
-        state["delta_summary"] = f"Cost changed by ${delta_cost:,.2f}"
-    return state
+        return {"runtime_state": {"delta_summary": f"Cost changed by ${delta_cost:,.2f}"}}
+    return {}
 
 
 
 def should_clarify(state: SupervisorState) -> str:
-    vi = state.get("validated_input")
-    if vi and vi.missing_info:
-        critical_missing = [m for m in vi.missing_info if "budget" in m.lower() or "timeline" in m.lower()]
-        if critical_missing and vi.query_category in (1, 3):
-            return "clarify"
+    vi = state.get("persistent_context", {}).get("business_constraints")
+    
+    if vi:
+        missing_info = getattr(vi, "missing_info", vi.get("missing_info", []) if isinstance(vi, dict) else [])
+        query_category = getattr(vi, "query_category", vi.get("query_category", 1) if isinstance(vi, dict) else 1)
+        
+        if missing_info:
+            critical_missing = [m for m in missing_info if "budget" in m.lower() or "timeline" in m.lower()]
+            if critical_missing and query_category in (1, 3):
+                return "clarify"
+                
     return route_by_category(state)
 
 
 
 
 async def node_invoke_scope(state: SupervisorState, config: RunnableConfig) -> dict:
-    res = await _scope_graph.ainvoke(state, config)
-    return {"scope_output": res.get("project_blueprint")}
+    # Explicit context projection for Scope
+    s = {
+        "messages": [],
+        "validated_input": state.get("persistent_context", {}).get("business_constraints"),
+        "initial_user_prompt": state.get("persistent_context", {}).get("initial_user_prompt"),
+        "latest_user_prompt": state.get("persistent_context", {}).get("latest_user_prompt"),
+        "negotiation_history": state.get("persistent_context", {}).get("negotiation_history", []),
+        "previous_final_output": state.get("working_outputs", {}).get("previous_final_output"),
+        "conflict_feedback": state.get("runtime_state", {}).get("conflict_feedback")
+    }
+    res = await _scope_graph.ainvoke(s, config)
+    
+    pc = {}
+    if res.get("parsed_requirements"):
+        pc["parsed_requirements"] = res["parsed_requirements"]
+        
+    return {
+        "persistent_context": pc, 
+        "working_outputs": {"scope_output": res.get("project_blueprint")}
+    }
 
 async def node_invoke_finance(state: SupervisorState, config: RunnableConfig) -> dict:
-    s = dict(state)
-    s["messages"] = [] # Reset messages for tool node loop
-    s["project_blueprint"] = state.get("scope_output")
+    # Explicit context projection for Finance
+    s = {
+        "messages": [],
+        "project_blueprint": state.get("working_outputs", {}).get("scope_output"),
+        "parsed_requirements": state.get("persistent_context", {}).get("parsed_requirements"),
+        "validated_input": state.get("persistent_context", {}).get("business_constraints")
+    }
     res = await _finance_graph.ainvoke(s, config)
-    return {"cost_estimate": res.get("cost_estimate")}
+    
+    return {"working_outputs": {"cost_estimate": res.get("cost_estimate")}}
 
 async def node_invoke_risk(state: SupervisorState, config: RunnableConfig) -> dict:
-    s = dict(state)
-    s["project_blueprint"] = state.get("scope_output")
+    # Explicit context projection for Risk
+    s = {
+        "messages": [],
+        "project_blueprint": state.get("working_outputs", {}).get("scope_output"),
+        "parsed_requirements": state.get("persistent_context", {}).get("parsed_requirements"),
+        "validated_input": state.get("persistent_context", {}).get("business_constraints")
+    }
     res = await _risk_graph.ainvoke(s, config)
-    return {"risk_assessment": res.get("risk_assessment")}
+    
+    return {"working_outputs": {"risk_assessment": res.get("risk_assessment")}}
 
 def build_supervisor_graph():
     """Builds the supervisor graph structure (without checkpointer)."""

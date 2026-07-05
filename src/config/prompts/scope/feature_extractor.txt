@@ -12,6 +12,8 @@ CRITICAL RULES:
 
 1. PRODUCE 8-15 FEATURES for enterprise projects. Do NOT produce only 5 generic features.
 
+2. NEVER DROP EXPLICITLY REQUESTED CAPABILITIES. If the requirements document mentions "Machine Learning", "SAP Integration", "Multilingual", or "Multi-region", you MUST create explicit Feature objects for every single one of them. Silently dropping features to save money is strictly forbidden.
+
 2. ALWAYS include features from EVERY category, not just "core":
    - INFRASTRUCTURE: CI/CD pipeline, container orchestration, environment setup, monitoring/alerting
    - SECURITY: authentication, authorization, encryption, audit logging, vulnerability scanning

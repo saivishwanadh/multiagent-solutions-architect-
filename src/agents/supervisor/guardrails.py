@@ -54,11 +54,14 @@ async def process_input(user_input: str, context: str = "") -> ValidatedInput:
 async def node_intake_analyzer(state: dict) -> dict:
     """Validates, classifies, and extracts constraints from the user prompt."""
     context = ""
-    if state.get("previous_final_output"):
-        context = f"Previous Project Context: {state['previous_final_output'].project_name} - {state['previous_final_output'].executive_summary}"
+    prev = state.get("working_outputs", {}).get("previous_final_output")
+    if prev:
+        context = f"Previous Project Context: {prev.project_name} - {prev.executive_summary}"
         
-    vi = await process_input(state["user_prompt"], context)
-    return {"validated_input": vi}
+    user_input = state.get("user_prompt") or state.get("persistent_context", {}).get("latest_user_prompt", "")
+    vi = await process_input(user_input, context)
+    
+    return {"persistent_context": {"business_constraints": vi}}
 
 if __name__ == "__main__":
     # Standalone testing of Agent 0

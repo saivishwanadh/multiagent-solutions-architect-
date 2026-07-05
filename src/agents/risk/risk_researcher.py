@@ -19,9 +19,13 @@ async def node_risk_researcher(state: dict) -> dict:
         bp = state.get("project_blueprint")
         if bp and bp.tech_stack:
             tech_list = []
-            if bp.tech_stack.frontend: tech_list.extend(bp.tech_stack.frontend)
-            if bp.tech_stack.backend: tech_list.extend(bp.tech_stack.backend)
-            if bp.tech_stack.database: tech_list.extend(bp.tech_stack.database)
+            if bp.tech_stack.frontend: tech_list.append(bp.tech_stack.frontend.name)
+            if bp.tech_stack.backend: tech_list.append(bp.tech_stack.backend.name)
+            if bp.tech_stack.database: tech_list.append(bp.tech_stack.database.name)
+            if bp.tech_stack.infrastructure: tech_list.append(bp.tech_stack.infrastructure.name)
+            
+            for t in bp.tech_stack.enterprise_platforms: tech_list.append(t.name)
+            for t in bp.tech_stack.integrations: tech_list.append(t.name)
             
             content = f"Tech Stack:\n{', '.join(tech_list)}"
         else:

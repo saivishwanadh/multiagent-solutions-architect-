@@ -11,6 +11,9 @@ async def node_feature_extractor(state: ScopeState) -> dict:
     if state.get("conflict_feedback") and state["conflict_feedback"].optimization_target in ("scope", "both"):
         content += "\nWARNING: Project is over budget. Only extract absolutely essential P0/P1 features. Drop P2/P3 nice-to-haves."
         
+    if state.get("coverage_feedback"):
+        content += f"\n{state['coverage_feedback']}\n"
+        
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": content}

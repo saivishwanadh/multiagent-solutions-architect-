@@ -7,8 +7,8 @@ class ExtractedConstraints(BaseModel):
     budget: float | None = Field(description="The numeric budget in USD if provided.")
     timeline_weeks: int | None = Field(description="The numeric timeline in weeks if provided.")
 
-async def node_clarification(state: SupervisorState) -> dict:
-    vi = state.get("validated_input")
+async def node_clarification(state: SupervisorState) -> SupervisorState:
+    vi = state.get("persistent_context", {}).get("business_constraints")
     if vi:
         critical_missing = [m for m in vi.missing_info if "budget" in m.lower() or "timeline" in m.lower()]
         if critical_missing and vi.query_category in (1, 3):
@@ -31,6 +31,6 @@ async def node_clarification(state: SupervisorState) -> dict:
                     vi.constraints.timeline_weeks = extracted.timeline_weeks
                     
             vi.missing_info = [m for m in vi.missing_info if m not in critical_missing]
-            return {"validated_input": vi}
+            return {"persistent_context": {"business_constraints": vi}}
             
     return {}

@@ -12,6 +12,9 @@ You must produce a DETAILED structured requirements document with these sections
    - Who are the end users and stakeholders?
    - What problem does this solve?
 
+CRITICAL RULE FOR SCALE AND CONSTRAINTS:
+You MUST perfectly preserve the user's explicit scale requests (e.g., "1 million devices", "250 factories"). NEVER silently reduce the scale to make the project fit the budget (e.g., reducing 250 factories down to 10). If the requested scale is impossible for the budget, you must STILL architect for the requested scale and let the Finance/Risk agents flag the impossibility later.
+
 2. FUNCTIONAL REQUIREMENTS
    - List every distinct capability the system must provide
    - For each requirement, note: what it does, who uses it, and any specific behavior

@@ -12,6 +12,13 @@ from src.agents.scope import (
     node_milestone_planner,
     ArchitectureDesign
 )
+from src.agents.scope.coverage_checker import node_coverage_checker
+
+async def route_coverage(state: ScopeState) -> str:
+    """Routes based on whether coverage feedback was generated."""
+    if state.get("coverage_feedback"):
+        return "retry"
+    return "ok"
 
 async def node_scope_summary(state: ScopeState) -> dict:
     """Assembles the final ProjectBlueprint from the preceding nodes."""
@@ -35,13 +42,24 @@ def build_scope_subgraph():
     
     graph.add_node("requirement_parser", node_requirement_parser)
     graph.add_node("feature_extractor", node_feature_extractor)
+    graph.add_node("coverage_checker", node_coverage_checker)
     graph.add_node("architecture_designer", node_architecture_designer)
     graph.add_node("milestone_planner", node_milestone_planner)
     graph.add_node("scope_summary", node_scope_summary)
     
     graph.add_edge(START, "requirement_parser")
     graph.add_edge("requirement_parser", "feature_extractor")
-    graph.add_edge("feature_extractor", "architecture_designer")
+    graph.add_edge("feature_extractor", "coverage_checker")
+    
+    graph.add_conditional_edges(
+        "coverage_checker",
+        route_coverage,
+        {
+            "retry": "feature_extractor",
+            "ok": "architecture_designer"
+        }
+    )
+    
     graph.add_edge("architecture_designer", "milestone_planner")
     graph.add_edge("milestone_planner", "scope_summary")
     graph.add_edge("scope_summary", END)

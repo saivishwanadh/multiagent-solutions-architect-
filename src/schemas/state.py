@@ -19,36 +19,52 @@ from src.schemas.conflict_feedback import ConflictFeedback
 from src.schemas.scenario_comparison import ScenarioComparison
 
 
-class SupervisorState(TypedDict):
-    """
-    The state schema for the Multi-Agent Orchestration graph.
-    All keys can be optional or None before the respective agent runs.
-    """
-
-    # === PERSISTENT STATE (Retained across turns) ===
-    user_prompt: str
-    messages: Annotated[list[BaseMessage], lambda old, new: old + new]
-    previous_final_output: FinalBlueprint | None
-    validated_input: ValidatedInput | None
-    total_hitl_count: int
+class PersistentContext(TypedDict, total=False):
+    initial_user_prompt: str | None
+    latest_user_prompt: str | None
+    parsed_requirements: str | None
+    business_constraints: ValidatedInput | None
     negotiation_history: list[dict[str, Any]]
+    total_hitl_count: int
 
-    # === TEMPORARY EXECUTION STATE (Reset based on Execution Intent) ===
-    scope_output: ProjectBlueprint | None            # Sub-graph A (Scope)
-    cost_estimate: CostEstimate | None               # Sub-graph C
-    risk_assessment: RiskAssessment | None           # Sub-graph D
-    final_output: FinalBlueprint | None              # Proposal Generator (Agent S)
-    
+class WorkingOutputs(TypedDict, total=False):
+    scope_output: ProjectBlueprint | None
+    cost_estimate: CostEstimate | None
+    risk_assessment: RiskAssessment | None
+    final_output: FinalBlueprint | None
+    previous_final_output: FinalBlueprint | None
+    markdown_report: str | None
+
+class RuntimeState(TypedDict, total=False):
     conflict_loop_count: int
     conflict_feedback: ConflictFeedback | None
-    refinement_target: str | None   # "scope" | "architecture" | "both"
-    
+    refinement_target: str | None
     deadlock_options: list[dict[str, Any]] | None
     user_choice: str | None
-
     scenario_comparison: ScenarioComparison | None
     scenario_a_result: dict | None
     scenario_b_result: dict | None
-
     delta_summary: str | None
     qa_response: str | None
+
+def merge_dict(old: dict | None, new: dict | None) -> dict:
+    if not old:
+        return new or {}
+    if not new:
+        return old
+    merged = old.copy()
+    merged.update(new)
+    return merged
+
+class SupervisorState(TypedDict):
+    """
+    The main state schema for the Multi-Agent Orchestration graph.
+    Uses strict layers to prevent context pruning and state bloat.
+    """
+    user_prompt: str | None
+    messages: Annotated[list[BaseMessage], lambda old, new: old + new]
+    
+    # Nested State Layers
+    persistent_context: Annotated[PersistentContext, merge_dict]
+    working_outputs: Annotated[WorkingOutputs, merge_dict]
+    runtime_state: Annotated[RuntimeState, merge_dict]

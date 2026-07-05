@@ -8,6 +8,14 @@ and API costs for any project type.
 
 from pydantic import BaseModel, Field
 
+class TeamRole(BaseModel):
+    role_name: str = Field(description="Title of the role (e.g., 'Solution Architect').")
+    count: int = Field(description="Number of people in this role.", ge=1)
+    monthly_rate: float = Field(description="Fully burdened monthly cost per person in USD.")
+    duration_months: int = Field(description="Number of months this role is needed.", ge=1)
+    utilization: float = Field(default=1.0, description="Percentage utilization (0.0 to 1.0).")
+    total_cost: float = Field(description="Total cost for this role (count * rate * months * utilization).")
+
 
 class CostBreakdown(BaseModel):
     """Breakdown of total cost into specific categories."""
@@ -65,7 +73,15 @@ class CostEstimate(BaseModel):
         description="Estimated total timeline in weeks."
     )
     team_size: int = Field(
-        description="Recommended number of team members."
+        description="Total recommended number of team members."
+    )
+    team_composition: list[TeamRole] = Field(
+        default_factory=list,
+        description="Detailed breakdown of the required enterprise team roles."
+    )
+    basis_of_estimate: list[str] = Field(
+        default_factory=list,
+        description="Explicit explanations of HOW the costs were calculated (e.g., 'Estimated because: 12 engineers for 12 months at $15k/mo')."
     )
     budget_verdict: str = Field(
         description=(

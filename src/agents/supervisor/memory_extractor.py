@@ -34,9 +34,9 @@ def get_memory_extractor_agent():
 
 async def node_extract_lessons(state: dict) -> dict:
     """Extracts lessons from the FinalBlueprint and saves them to ChromaDB."""
-    final = state.get("final_output")
+    final = state.get("working_outputs", {}).get("final_output")
     if not final or not isinstance(final, FinalBlueprint):
-        return state
+        return {}
         
     try:
         agent = get_memory_extractor_agent()
@@ -57,4 +57,4 @@ async def node_extract_lessons(state: dict) -> dict:
         print(f"\n[Memory Extractor] Failed to extract or save memory: {e}")
         
     # We do not modify the state, we just perform a side effect.
-    return state
+    return {}

@@ -14,12 +14,12 @@ async def compare_scenarios(scenario_a_result: dict, scenario_b_result: dict) ->
     SCENARIO A:
     Cost: ${scenario_a_result.get('cost_estimate').total_estimated_cost if scenario_a_result.get('cost_estimate') else 0}
     Risk: {scenario_a_result.get('risk_assessment').overall_risk_level if scenario_a_result.get('risk_assessment') else 'UNKNOWN'}
-    Architecture: {scenario_a_result.get('project_blueprint').tech_stack.backend if scenario_a_result.get('project_blueprint') and scenario_a_result.get('project_blueprint').tech_stack else 'UNKNOWN'}
+    Architecture: {scenario_a_result.get('project_blueprint').tech_stack.backend.name if scenario_a_result.get('project_blueprint') and scenario_a_result.get('project_blueprint').tech_stack else 'UNKNOWN'}
     
     SCENARIO B:
     Cost: ${scenario_b_result.get('cost_estimate').total_estimated_cost if scenario_b_result.get('cost_estimate') else 0}
     Risk: {scenario_b_result.get('risk_assessment').overall_risk_level if scenario_b_result.get('risk_assessment') else 'UNKNOWN'}
-    Architecture: {scenario_b_result.get('project_blueprint').tech_stack.backend if scenario_b_result.get('project_blueprint') and scenario_b_result.get('project_blueprint').tech_stack else 'UNKNOWN'}
+    Architecture: {scenario_b_result.get('project_blueprint').tech_stack.backend.name if scenario_b_result.get('project_blueprint') and scenario_b_result.get('project_blueprint').tech_stack else 'UNKNOWN'}
     """
     
     llm = get_llm(temperature=0.3)
@@ -30,9 +30,9 @@ async def compare_scenarios(scenario_a_result: dict, scenario_b_result: dict) ->
     ])
 
 async def node_scenario_comparator(state: SupervisorState) -> dict:
-    res_a = state.get("scenario_a_result")
-    res_b = state.get("scenario_b_result")
+    res_a = state.get("runtime_state", {}).get("scenario_a_result")
+    res_b = state.get("runtime_state", {}).get("scenario_b_result")
     if res_a and res_b:
         comparison = await compare_scenarios(res_a, res_b)
-        return {"scenario_comparison": comparison}
+        return {"runtime_state": {"scenario_comparison": comparison}}
     return {}

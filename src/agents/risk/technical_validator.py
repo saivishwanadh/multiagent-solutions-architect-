@@ -9,6 +9,9 @@ async def node_technical_validator(state: RiskState) -> dict:
     content = f"Architecture Tech Stack:\n{state['project_blueprint'].tech_stack.model_dump_json()}\n"
     if state["project_blueprint"].architecture_pattern:
         content += f"Pattern: {state['project_blueprint'].architecture_pattern.name}\n"
+        
+    if state.get("parsed_requirements"):
+        content += f"\n--- BUSINESS CONTEXT & REQUIREMENTS ---\n{state['parsed_requirements']}\n---------------------------------------\n"
     
     relevant_lessons = get_relevant_lessons(state, ["architecture", "infrastructure", "database", "integration"])
     if relevant_lessons:

@@ -17,6 +17,7 @@ class FinanceState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     project_blueprint: ProjectBlueprint
     validated_input: ValidatedInput | None
+    parsed_requirements: str | None
     dev_cost_data: DevelopmentCostData | None
     infra_cost_data: CostBreakdown | None
     cost_estimate: CostEstimate | None

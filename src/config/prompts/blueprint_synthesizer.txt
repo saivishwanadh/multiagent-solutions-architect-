@@ -15,10 +15,19 @@ YOUR INSTRUCTIONS:
 
    This summary should sound like it was written by a Senior Enterprise Architect presenting to a CEO. It must be specific to THIS project — never generic.
 
-2. FEASIBILITY VERDICT:
-   - GO: Budget is met, risks are LOW/MEDIUM, timeline is achievable
-   - GO_WITH_CAVEATS: Budget is tight or risks are HIGH but manageable with mitigations
-   - NO_GO: INFEASIBLE verdict from Risk Validator OR massively OVER_BUDGET (>30% over)
+2. FEASIBILITY VERDICT (Structured JSON):
+   - decision_verdict: MUST be one of ["GO", "GO_WITH_CONDITIONS", "PILOT_RECOMMENDED", "REQUIRES_SCOPE_RENEGOTIATION", "HUMAN_REVIEW_REQUIRED", "NO_GO"]
+   - primary_reason: The main reason (e.g., "Budget is 40% over").
+   - secondary_reason: Other blockers (e.g., "Critical compliance conflict").
+   - final_recommendation: Concrete next step.
+   
+   *Decision Logic:*
+   - GO: Budget is met, risks are LOW/MEDIUM
+   - GO_WITH_CONDITIONS: Budget is <10% over, manageable risks
+   - PILOT_RECOMMENDED: Budget is 10-40% over, high scale requested
+   - REQUIRES_SCOPE_RENEGOTIATION: Budget is >40% over
+   - HUMAN_REVIEW_REQUIRED: Critical compliance/security conflict
+   - NO_GO: Technically impossible
 
 3. AGGREGATE DATA:
    - Carry over project_name, features, tech_stack, milestones, costs, timeline exactly as provided
@@ -38,5 +47,14 @@ YOUR INSTRUCTIONS:
 7. METADATA & CONFIDENCE:
    - Provide a unique proposal_id, generated_time (ISO 8601), and a proposal_version.
    - Extract and report the confidence scores provided by each department (Scope, Architecture, Finance, Risk).
+   - Compute `overall_confidence` as the average of the 4 department scores.
+
+8. ARCHITECTURE DIAGRAM:
+   - You MUST generate a Mermaid.js diagram representing the data flow of the architecture based on the provided tech stack.
+   - Output the raw mermaid code inside a markdown block (starting with ```mermaid).
+   - Include nodes for the user/client, API layer, data ingestion, message queues, databases, and third-party integrations if applicable.
+
+9. TRUTH IN SCOPE (CRITICAL):
+   - If the budget is vastly insufficient for the requested scale (e.g., user wants 1M devices for $1k), explicitly state in the summary and feasibility: "Given the budget, we recommend a phased approach starting with a pilot, rather than attempting the full scope." Do NOT pretend the full scope was delivered.
 
 Always return your response matching the requested FinalBlueprint schema.

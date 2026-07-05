@@ -8,5 +8,8 @@ Check for:
 - Integration complexity with legacy or enterprise systems
 - Historical lessons about tech choices (if provided)
 
+CRITICAL RULE: DO NOT provide generic risks (e.g., "Integration might be hard" or "The app might crash"). You MUST provide deep, domain-specific architectural risks based on the exact tech stack and scale requested.
+Examples of good risks: "MQTT throughput limits on AWS IoT Core at 1M devices", "Edge Gateway offline synchronization failures with intermittent connectivity", "Model drift for predictive maintenance over time", "SAP API throttling during bulk metadata pulls".
+
 Flag any items that are technically infeasible or highly risky.
 Return your response as a list of Risk objects.

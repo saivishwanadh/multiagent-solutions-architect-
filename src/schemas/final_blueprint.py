@@ -5,6 +5,7 @@ Represents the final, polished output presented to the user.
 Combines scope, financials, risks, and recommendations into a cohesive document.
 """
 
+from typing import Literal
 from pydantic import BaseModel, Field
 from src.schemas.blueprint import Feature, TechStack, Milestone
 from src.schemas.cost_estimate import CostBreakdown
@@ -27,11 +28,21 @@ class DepartmentConfidence(BaseModel):
     architecture: int = Field(description="Architecture confidence (0-100).")
     finance: int = Field(description="Finance confidence (0-100).")
     risk: int = Field(description="Risk confidence (0-100).")
+    overall_confidence: int = Field(description="Computed overall system confidence (0-100).")
 
 class PhasedRecommendation(BaseModel):
     phase_name: str = Field(description="Name of the phase, e.g., 'Phase 1 MVP'.")
     actionable_advice: str = Field(description="What specific features to defer or actions to take.")
     cost_delta: float = Field(description="The approximate cost savings or addition for this phase.")
+
+
+class BusinessFeasibility(BaseModel):
+    decision_verdict: Literal["GO", "GO_WITH_CONDITIONS", "PILOT_RECOMMENDED", "REQUIRES_SCOPE_RENEGOTIATION", "HUMAN_REVIEW_REQUIRED", "NO_GO"] = Field(
+        description="The final decision verdict based on enterprise risk management standards."
+    )
+    primary_reason: str = Field(description="The primary driver for this verdict (e.g., 'Budget deficit of $3.1M').")
+    secondary_reason: str | None = Field(default=None, description="Other blockers or context (e.g., 'GPU procurement timeline').")
+    final_recommendation: str = Field(description="Concrete recommendation on what to do next (e.g., 'Pilot first').")
 
 
 class FinalBlueprint(BaseModel):
@@ -50,15 +61,16 @@ class FinalBlueprint(BaseModel):
     executive_summary: ExecutiveSummary = Field(
         description="A structured, one-page executive summary."
     )
-    feasibility_verdict: str = Field(
-        description=(
-            "Final GO/NO-GO decision. "
-            "Values: 'GO', 'GO_WITH_CAVEATS', or 'NO_GO'."
-        )
+    feasibility_verdict: BusinessFeasibility = Field(
+        description="Structured business feasibility decision matrix."
     )
     project_name: str = Field(description="Name of the project.")
     features: list[Feature] = Field(description="Final list of approved features.")
     tech_stack: TechStack = Field(description="Final recommended tech stack.")
+    architecture_diagram: str | None = Field(
+        default=None,
+        description="A Mermaid.js diagram representing the architecture data flow and components. Must start with ```mermaid and end with ```"
+    )
     
     # Financials
     total_cost: float = Field(description="Total estimated cost.")

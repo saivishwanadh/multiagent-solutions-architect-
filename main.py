@@ -307,30 +307,34 @@ async def interactive_loop():
                 
                 graph_state = await app.aget_state(config)
             
-            vi = final_state.get("validated_input")
-            if vi and not vi.is_valid:
-                print(f"\n  Request blocked: {vi.rejection_reason}")
+            vi = final_state.get("persistent_context", {}).get("business_constraints")
+            if vi and not getattr(vi, "is_valid", vi.get("is_valid") if isinstance(vi, dict) else False):
+                reason = getattr(vi, "rejection_reason", vi.get("rejection_reason") if isinstance(vi, dict) else "")
+                print(f"\n  Request blocked: {reason}")
                 continue
             
             print(f"\n{'─' * 56}")
             print(f"  Pipeline completed in {total_time:.1f}s")
             print(f"{'─' * 56}")
             
-            comp = final_state.get("scenario_comparison")
-            delta = final_state.get("delta_summary")
-            final = final_state.get("final_output")
-            qa = final_state.get("qa_response")
+            rs = final_state.get("runtime_state", {})
+            wo = final_state.get("working_outputs", {})
+            
+            comp = rs.get("scenario_comparison")
+            delta = rs.get("delta_summary")
+            final = wo.get("final_output")
+            qa = rs.get("qa_response")
             
             if qa:
                 print(f"\n  Agent Response:\n\n{qa}\n")
-                await app.aupdate_state(config, {"qa_response": None})
+                await app.aupdate_state(config, {"runtime_state": {"qa_response": None}})
             
             elif comp:
                 print("\n═══ TRADEOFF ANALYSIS ═══")
                 print(f"Scenario A:\n  Cost: ${comp.scenario_a.total_cost:,.0f}\n  Risk: {comp.scenario_a.risk_level}\n  Pros: {', '.join(comp.scenario_a.pros)}")
                 print(f"\nScenario B:\n  Cost: ${comp.scenario_b.total_cost:,.0f}\n  Risk: {comp.scenario_b.risk_level}\n  Pros: {', '.join(comp.scenario_b.pros)}")
                 print(f"\nRecommendation: {comp.recommendation}")
-                await app.aupdate_state(config, {"scenario_comparison": None})
+                await app.aupdate_state(config, {"runtime_state": {"scenario_comparison": None}})
             
             elif delta:
                 print(f"\n{'─' * 56}")
@@ -339,7 +343,7 @@ async def interactive_loop():
                 if final:
                     print(f"\n  Updated Cost: ${final.total_cost:,.0f}  |  Risk: {final.overall_risk}")
                     print(f"\n{final.executive_summary}")
-                await app.aupdate_state(config, {"delta_summary": None})
+                await app.aupdate_state(config, {"runtime_state": {"delta_summary": None}})
                 
             elif final:
                 print_full_proposal(final, final_state.get('conflict_loop_count', 0))

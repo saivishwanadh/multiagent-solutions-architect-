@@ -23,8 +23,9 @@ async def node_scenario_splitter(state: SupervisorState) -> dict:
     import asyncio
     from src.agents.supervisor.tradeoff_pipeline import run_pipeline_for_scenario
     
-    split_result = await split_scenarios(state["user_prompt"])
-    lessons = state.get("org_lessons", [])
+    prompt = state.get("persistent_context", {}).get("latest_user_prompt", "")
+    split_result = await split_scenarios(prompt)
+    lessons = state.get("persistent_context", {}).get("org_lessons", [])
     
     # Run scenarios simultaneously using asyncio.gather
     res_a, res_b = await asyncio.gather(
@@ -33,6 +34,8 @@ async def node_scenario_splitter(state: SupervisorState) -> dict:
     )
     
     return {
-        "scenario_a_result": res_a,
-        "scenario_b_result": res_b
+        "runtime_state": {
+            "scenario_a_result": res_a,
+            "scenario_b_result": res_b
+        }
     }

@@ -9,10 +9,13 @@ async def node_timeline_validator(state: RiskState) -> dict:
     features_subset = [{"name": f.name, "category": f.category} for f in state['project_blueprint'].features]
     content = f"Features:\n{features_subset}\n"
     
-    vi = state.get("validated_input")
+    vi = state.get("validated_input") or state.get("persistent_context", {}).get("business_constraints")
     user_timeline = vi.constraints.timeline_weeks if vi and vi.constraints and vi.constraints.timeline_weeks else sum(m.duration_weeks for m in state["project_blueprint"].milestones)
     
     content += f"Estimated Timeline: {user_timeline} weeks\n"
+    
+    if state.get("parsed_requirements"):
+        content += f"\n--- BUSINESS CONTEXT & REQUIREMENTS ---\n{state['parsed_requirements']}\n---------------------------------------\n"
     
     relevant_lessons = get_relevant_lessons(state, ["timeline", "delay", "schedule"])
     if relevant_lessons:

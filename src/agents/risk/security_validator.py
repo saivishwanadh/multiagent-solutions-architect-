@@ -10,6 +10,9 @@ async def node_security_validator(state: RiskState) -> dict:
     features_subset = [{"name": f.name, "category": f.category} for f in state['project_blueprint'].features]
     content += f"Features (for context on data handled):\n{features_subset}\n"
     
+    if state.get("parsed_requirements"):
+        content += f"\n--- BUSINESS CONTEXT & REQUIREMENTS ---\n{state['parsed_requirements']}\n---------------------------------------\n"
+    
     relevant_lessons = get_relevant_lessons(state, ["security", "compliance", "privacy", "data", "pii", "phi"])
     if relevant_lessons:
         content += f"Historical Lessons:\n{relevant_lessons}\n"

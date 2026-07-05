@@ -2,11 +2,17 @@ from src.schemas.state import SupervisorState
 
 def route_by_category(state: SupervisorState) -> str:
     """Routes to different pipeline paths based on query category."""
-    vi = state.get("validated_input")
-    if not vi or not vi.is_valid:
+    vi = state.get("persistent_context", {}).get("business_constraints")
+    
+    if not vi:
+        return "reject"
+        
+    is_valid = getattr(vi, "is_valid", vi.get("is_valid") if isinstance(vi, dict) else False)
+    if not is_valid:
         return "reject"
     
-    category = vi.query_category
+    category = getattr(vi, "query_category", vi.get("query_category") if isinstance(vi, dict) else 1)
+    
     if category == 1:    
         return "full_pipeline"         # Scope -> Arch -> Finance -> Risk
     elif category == 2:  

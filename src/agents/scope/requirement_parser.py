@@ -6,8 +6,12 @@ async def node_requirement_parser(state: ScopeState) -> dict:
     llm = get_llm(temperature=0.0)
     sys_prompt = read_scope_prompt("requirement_parser.txt")
     
-    content = f"User Request: {state['validated_input'].project_summary}\n"
-    content += f"Constraints: {state['validated_input'].constraints.model_dump_json()}\n"
+    content = f"Initial Business Objective: {state.get('initial_user_prompt')}\n"
+    if state.get("latest_user_prompt") and state.get("latest_user_prompt") != state.get("initial_user_prompt"):
+        content += f"Latest Modification Request: {state.get('latest_user_prompt')}\n"
+        
+    content += f"\nAnalyzed Project Summary: {state['validated_input'].project_summary}\n"
+    content += f"Extracted Constraints: {state['validated_input'].constraints.model_dump_json()}\n"
     
     if state.get("conflict_feedback"):
         cf = state["conflict_feedback"]

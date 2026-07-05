@@ -53,17 +53,17 @@ def _build_user_message(
         parts.append(f"  - [{f.priority}] {f.name} ({f.complexity})")
     
     parts.append("\nTECH STACK:")
-    parts.append(f"  Backend: {blueprint.tech_stack.backend}")
-    parts.append(f"  Database: {blueprint.tech_stack.database}")
-    parts.append(f"  Infrastructure: {blueprint.tech_stack.infrastructure}")
+    parts.append(f"  Backend: {blueprint.tech_stack.backend.name}")
+    parts.append(f"  Database: {blueprint.tech_stack.database.name}")
+    parts.append(f"  Infrastructure: {blueprint.tech_stack.infrastructure.name}")
     if blueprint.tech_stack.frontend:
-        parts.append(f"  Frontend: {blueprint.tech_stack.frontend}")
+        parts.append(f"  Frontend: {blueprint.tech_stack.frontend.name}")
     if blueprint.tech_stack.enterprise_platforms:
-        parts.append(f"  Enterprise Platforms: {', '.join(blueprint.tech_stack.enterprise_platforms)}")
+        parts.append(f"  Enterprise Platforms: {', '.join([t.name for t in blueprint.tech_stack.enterprise_platforms])}")
     if blueprint.tech_stack.ai_models:
-        parts.append(f"  AI Models: {', '.join(blueprint.tech_stack.ai_models)}")
+        parts.append(f"  AI Models: {', '.join([t.name for t in blueprint.tech_stack.ai_models])}")
     if blueprint.tech_stack.integrations:
-        parts.append(f"  Integrations: {', '.join(blueprint.tech_stack.integrations)}")
+        parts.append(f"  Integrations: {', '.join([t.name for t in blueprint.tech_stack.integrations])}")
 
     parts.append("\nMILESTONES:")
     for m in blueprint.milestones:
@@ -78,7 +78,7 @@ def _build_user_message(
     parts.append(f"BUDGET VERDICT: {cost_estimate.budget_verdict} (Delta: ${cost_estimate.budget_delta:,.0f})")
     
     parts.append("\nCOST BREAKDOWN:")
-    parts.append(f"  Infrastructure: ${cost_estimate.cost_breakdown.infrastructure:,.0f}")
+    parts.append(f"  Infrastructure: ${sum(cost_estimate.cost_breakdown.infrastructure.values()):,.0f}")
     parts.append(f"  Managed Services: ${cost_estimate.cost_breakdown.managed_services_and_apis:,.0f}")
     parts.append(f"  Development: ${cost_estimate.cost_breakdown.development_cost:,.0f}")
     parts.append(f"  Third Party: ${cost_estimate.cost_breakdown.third_party:,.0f}")
@@ -177,30 +177,63 @@ async def process_synthesis(
 def _format_markdown(blueprint: FinalBlueprint) -> str:
     """Formats the FinalBlueprint into a clean Markdown string."""
     md = f"# Project Proposal: {blueprint.project_name}\n\n"
-    md += f"## Executive Summary\n{blueprint.executive_summary}\n\n"
-    md += f"**Budget Status**: {blueprint.budget_status}\n"
-    md += f"**Feasibility Verdict**: {blueprint.feasibility_verdict}\n"
+    md += f"## Executive Summary\n"
+    md += f"**Objective**: {blueprint.executive_summary.objective}\n"
+    md += f"**Architecture**: {blueprint.executive_summary.architecture}\n"
+    md += f"**Cost**: {blueprint.executive_summary.cost}\n"
+    md += f"**Recommendation**: {blueprint.executive_summary.recommendation}\n\n"
+    
+    md += f"## Feasibility Verdict: {blueprint.feasibility_verdict.decision_verdict}\n"
+    md += f"**Primary Reason**: {blueprint.feasibility_verdict.primary_reason}\n"
+    if blueprint.feasibility_verdict.secondary_reason:
+        md += f"**Secondary Reason**: {blueprint.feasibility_verdict.secondary_reason}\n"
+    md += f"**Final Recommendation**: {blueprint.feasibility_verdict.final_recommendation}\n\n"
     md += f"**Overall Risk**: {blueprint.overall_risk}\n\n"
+
+    md += f"## Confidence Scores\n"
+    md += f"- **Overall Confidence**: {blueprint.department_confidences.overall_confidence}%\n"
+    md += f"- Scope: {blueprint.department_confidences.scope}% | Architecture: {blueprint.department_confidences.architecture}% | Finance: {blueprint.department_confidences.finance}% | Risk: {blueprint.department_confidences.risk}%\n\n"
+
     
     md += f"## Financials & Timeline\n"
     md += f"- **Total Cost**: ${blueprint.total_cost:,.0f}\n"
     md += f"- **Timeline**: {blueprint.timeline_weeks} weeks\n"
     md += f"- **Team Size**: {blueprint.team_size}\n\n"
     
+    if getattr(blueprint, "team_composition", None):
+        md += f"### Team Composition\n"
+        md += "| Role | Count | Months | Rate/mo | Total Cost |\n"
+        md += "|---|---|---|---|---|\n"
+        for role in blueprint.team_composition:
+            md += f"| {role.role_name} | {role.count} | {role.duration_months} | ${role.monthly_rate:,.0f} | ${role.total_cost:,.0f} |\n"
+        md += "\n"
+        
+    if getattr(blueprint, "basis_of_estimate", None):
+        md += f"### Basis of Estimate\n"
+        for basis in blueprint.basis_of_estimate:
+            md += f"- {basis}\n"
+        md += "\n"
+
+    
     if blueprint.cost_breakdown:
         md += f"### Cost Breakdown\n"
-        md += f"- Infrastructure: ${blueprint.cost_breakdown.infrastructure:,.0f}\n"
+        md += f"- Infrastructure: ${sum(blueprint.cost_breakdown.infrastructure.values()):,.0f}\n"
         md += f"- Managed Services: ${blueprint.cost_breakdown.managed_services_and_apis:,.0f}\n"
         md += f"- Development: ${blueprint.cost_breakdown.development_cost:,.0f}\n"
         md += f"- Third Party: ${blueprint.cost_breakdown.third_party:,.0f}\n"
         md += f"- Licensing: ${blueprint.cost_breakdown.licensing:,.0f}\n\n"
+
     
     md += f"## Technical Architecture\n"
-    md += f"- **Backend**: {blueprint.tech_stack.backend}\n"
-    md += f"- **Database**: {blueprint.tech_stack.database}\n"
-    md += f"- **Infrastructure**: {blueprint.tech_stack.infrastructure}\n"
+    md += f"- **Backend**: {blueprint.tech_stack.backend.name}\n"
+    md += f"- **Database**: {blueprint.tech_stack.database.name}\n"
+    md += f"- **Infrastructure**: {blueprint.tech_stack.infrastructure.name}\n"
     if blueprint.tech_stack.frontend:
-        md += f"- **Frontend**: {blueprint.tech_stack.frontend}\n"
+        md += f"- **Frontend**: {blueprint.tech_stack.frontend.name}\n"
+        
+    if getattr(blueprint, "architecture_diagram", None):
+        md += f"\n### Architecture Data Flow\n"
+        md += f"{blueprint.architecture_diagram}\n"
     
     md += f"\n## Key Features\n"
     for f in blueprint.features:
@@ -214,9 +247,14 @@ def _format_markdown(blueprint: FinalBlueprint) -> str:
     for r in blueprint.top_risks:
         md += f"- **{r.severity.upper()}**: {r.description}\n  - *Mitigation*: {r.mitigation}\n"
         
-    md += f"\n## Strategic Recommendations\n"
-    for rec in blueprint.recommendations:
-        md += f"- {rec}\n"
+    md += f"\n## Phased Recommendations\n"
+    for phase in blueprint.phased_recommendations:
+        md += f"- **{phase.phase_name}** (Delta: ${phase.cost_delta:,.0f})\n"
+        md += f"  - {phase.actionable_advice}\n"
+        
+    md += f"\n## Next Steps\n"
+    for step in blueprint.next_steps:
+        md += f"- {step}\n"
         
     return md
 
@@ -225,14 +263,12 @@ async def node_proposal_generator(state: dict) -> dict:
     """Uses Agent S to produce the final output."""
     
     # If this is a direct_qa routing, the sub-graphs were skipped, so we restore from previous
-    if not state.get("scope_output") and state.get("previous_final_output"):
-        prev = state["previous_final_output"]
-        state["scope_output"] = prev
-        from src.schemas.blueprint import ProjectBlueprint
-        from src.schemas.cost_estimate import CostEstimate
-        from src.schemas.risk_assessment import RiskAssessment
-        
-        state["scope_output"] = ProjectBlueprint(
+    wo = state.get("working_outputs", {})
+    pc = state.get("persistent_context", {})
+    
+    if not wo.get("scope_output") and wo.get("previous_final_output"):
+        prev = wo["previous_final_output"]
+        wo["scope_output"] = ProjectBlueprint(
             project_name=prev.project_name,
             project_type="Unknown",
             features=prev.features,
@@ -240,19 +276,20 @@ async def node_proposal_generator(state: dict) -> dict:
             milestones=prev.milestones,
             assumptions=prev.assumptions
         )
-        state["architecture_output"] = None 
-        state["cost_estimate"] = CostEstimate(
+        wo["cost_estimate"] = CostEstimate(
             total_estimated_cost=prev.total_cost,
             cost_breakdown=prev.cost_breakdown,
             timeline_weeks=prev.timeline_weeks,
             team_size=prev.team_size,
             cost_saving_suggestions=[],
-            budget_verdict=prev.budget_status,
+            budget_verdict="PASS",
             budget_delta=0,
             cost_per_feature=[],
-            user_budget=None
+            user_budget=None,
+            team_composition=[],
+            basis_of_estimate=[]
         )
-        state["risk_assessment"] = RiskAssessment(
+        wo["risk_assessment"] = RiskAssessment(
             overall_risk_level=prev.overall_risk,
             feasibility_verdict=prev.feasibility_verdict,
             risks=prev.top_risks,
@@ -260,21 +297,28 @@ async def node_proposal_generator(state: dict) -> dict:
             assumptions=[]
         )
     
-    combined_blueprint = state.get("scope_output")
-    arch = state.get("architecture_output")
-    
-    if combined_blueprint and arch:
-        combined_blueprint.tech_stack = arch.tech_stack
+    combined_blueprint = wo.get("scope_output")
     
     final = await process_synthesis(
         blueprint=combined_blueprint,
-        cost_estimate=state.get("cost_estimate"),
-        risk_assessment=state.get("risk_assessment"),
-        user_prompt=state.get("user_prompt")
+        cost_estimate=wo.get("cost_estimate"),
+        risk_assessment=wo.get("risk_assessment"),
+        user_prompt=pc.get("latest_user_prompt")
     )
     
-    # Generate and physically save the markdown document
+    # Generate the markdown string
     markdown_content = _format_markdown(final)
-    save_document(markdown_content)
     
-    return {"final_output": final}
+    # Check if the Intake Analyzer LLM flagged that the user asked to save the document
+    vi = pc.get("business_constraints")
+    if vi and getattr(vi, "requires_document_generation", False):
+        from src.tools.file_tools import save_document
+        save_document(markdown_content)
+    
+    # Update working outputs
+    return {
+        "working_outputs": {
+            "final_output": final,
+            "markdown_report": markdown_content
+        }
+    }
